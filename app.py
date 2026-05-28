@@ -1,8 +1,10 @@
 import streamlit as st
 import pandas as pd
+import requests
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 from sklearn.metrics.pairwise import cosine_similarity
+API_KEY = "dc039555"
 
 # Page Config
 st.set_page_config(
@@ -66,6 +68,24 @@ st.markdown(
 # Load Dataset (LIMITED for RAM optimization)
 movies = pd.read_csv("movies.csv").head(5000)
 ratings = pd.read_csv("ratings.csv").head(5000)
+# User Behavior Analysis
+
+total_users = ratings['userId'].nunique()
+
+total_movies = movies['movieId'].nunique()
+
+average_rating = round(
+    ratings['rating'].mean(),
+    2
+)
+
+most_rated_movie_id = ratings[
+    'movieId'
+].value_counts().idxmax()
+
+most_rated_movie = movies[
+    movies['movieId'] == most_rated_movie_id
+]['title'].values[0]
 # Collaborative Filtering Matrix
 
 user_movie_matrix = ratings.pivot_table(
@@ -160,7 +180,22 @@ def collaborative_recommend(movie_title):
             )
 
     return recommended_titles
+def fetch_poster(movie_title):
 
+    url = (
+        f"http://www.omdbapi.com/?t={movie_title}"
+        f"&apikey={"dc039555"}"
+    )
+
+    data = requests.get(url).json()
+
+    poster = data.get("Poster")
+
+    if poster and poster != "N/A":
+
+        return poster
+
+    return None
 # Sidebar
 st.sidebar.title("🎬 Netflix AI")
 
@@ -172,6 +207,39 @@ st.sidebar.info(
 
 # Main Title
 st.title("🎥 AI Movie Recommendation System")
+# User Behavior Analysis Section
+
+st.markdown("---")
+
+st.header("📊 User Behavior Analysis")
+
+col1, col2 = st.columns(2)
+
+with col1:
+
+    st.metric(
+        "👤 Total Users",
+        total_users
+    )
+
+    st.metric(
+        "🎬 Total Movies",
+        total_movies
+    )
+
+with col2:
+
+    st.metric(
+        "⭐ Average Rating",
+        average_rating
+    )
+
+    st.metric(
+        "🏆 Most Rated Movie",
+        most_rated_movie
+    )
+
+st.markdown("---")
 
 st.write(
     "Get personalized movie recommendations instantly."
@@ -181,6 +249,25 @@ st.write(
 selected_movie = st.selectbox(
     "Select Movie",
     movies["title"].values
+)
+
+
+# Movie Details Section
+
+movie_info = movies[
+    movies['title'] == selected_movie
+].iloc[0]
+
+st.markdown("---")
+
+st.header("🎬 Movie Details")
+
+st.subheader(
+    movie_info['title']
+)
+
+st.info(
+    f"🎭 Genres: {movie_info['genres']}"
 )
 
 # Recommendation Button
@@ -209,6 +296,18 @@ if st.button("Recommend"):
     for index, row in recommendations.iterrows():
 
         with cols[index % 2]:
+            
+            poster = fetch_poster(
+                row['title']
+            )
+
+            if poster:
+
+                st.image(
+                    poster,
+                    use_container_width=True
+                )
+
 
             st.markdown(
                 f"""
