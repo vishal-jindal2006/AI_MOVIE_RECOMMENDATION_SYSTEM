@@ -79,11 +79,15 @@ st.markdown(
 @st.cache_data
 def load_movies():
 
-    file_id = "1FVzBtAVnyLrKvq3wMSfAIkAiSaiRBEWI"
+    file_id = "1ABCXYZ123456"
 
     url = f"https://drive.google.com/uc?id={file_id}"
 
-    return pd.read_csv(url).head(9000)
+    output = "tmdb_temp.csv"
+
+    gdown.download(url, output, quiet=False)
+
+    return pd.read_csv(output).head(9000)
 
 movies = load_movies()
 
