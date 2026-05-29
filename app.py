@@ -16,6 +16,16 @@ st.set_page_config(
 st.markdown(
     """
     <style>
+    
+    header {
+    visibility: hidden;
+    }
+    
+    .block-container {
+        padding-top: 1rem;
+        padding-bottom: 0rem;
+        max-width: 95%;
+    }
 
     .stApp {
         background-color: #141414;
@@ -66,26 +76,39 @@ st.markdown(
 )
 
 # Load Dataset (LIMITED for RAM optimization)
-movies = pd.read_csv("movies.csv").head(5000)
+@st.cache_data
+def load_movies():
+
+    return pd.read_csv(
+        "TMDB_movie_dataset_v11.csv"
+    ).head(9000)
+
+movies = load_movies()
+
+movies = movies[
+    [
+        'title',
+        'genres',
+        'overview',
+        'poster_path',
+        'vote_average',
+        'release_date'
+    ]
+]
+
 ratings = pd.read_csv("ratings.csv").head(5000)
 # User Behavior Analysis
 
 total_users = ratings['userId'].nunique()
 
-total_movies = movies['movieId'].nunique()
+total_movies = movies['title'].nunique()
 
 average_rating = round(
     ratings['rating'].mean(),
     2
 )
 
-most_rated_movie_id = ratings[
-    'movieId'
-].value_counts().idxmax()
-
-most_rated_movie = movies[
-    movies['movieId'] == most_rated_movie_id
-]['title'].values[0]
+most_rated_movie = "Popular TMDB Movie"
 # Collaborative Filtering Matrix
 
 user_movie_matrix = ratings.pivot_table(
@@ -125,7 +148,7 @@ def recommend(title):
 
     idx = indices[title]
 
-    sim_scores = list(enumerate(cosine_sim[idx]))
+    sim_scores = list(enumerate(cosine_sim[idx].flatten()))
 
     sim_scores = sorted(
         sim_scores,
@@ -133,7 +156,7 @@ def recommend(title):
         reverse=True
     )
 
-    sim_scores = sim_scores[1:11]
+    sim_scores = sim_scores[1:8]
 
     movie_indices = [i[0] for i in sim_scores]
 
@@ -197,7 +220,22 @@ def fetch_poster(movie_title):
 
     return None
 # Sidebar
+
+st.sidebar.image(
+    "https://upload.wikimedia.org/wikipedia/commons/0/08/Netflix_2015_logo.svg",
+    width=140
+)
+
 st.sidebar.title("🎬 Netflix AI")
+menu = st.sidebar.radio(
+    "📌 Navigation",
+    [
+        "🏠 Home",
+        "🔥 Trending",
+        "⭐ Top Rated",
+        "ℹ️ About"
+    ]
+)
 
 st.sidebar.markdown("---")
 
@@ -206,200 +244,325 @@ st.sidebar.info(
 )
 
 # Main Title
-st.title("🎥 AI Movie Recommendation System")
-# User Behavior Analysis Section
+if menu == "🏠 Home":
+    
+    st.title("🎥 AI Movie Recommendation System")
+    # User Behavior Analysis Section
 
-st.markdown("---")
+    st.markdown("---")
 
-st.header("📊 User Behavior Analysis")
+    st.header("📊 User Behavior Analysis")
 
-col1, col2 = st.columns(2)
+    col1, col2 = st.columns(2)
 
-with col1:
+    with col1:
 
-    st.metric(
-        "👤 Total Users",
-        total_users
+        st.metric(
+            "👤 Total Users",
+            total_users
+        )
+
+        st.metric(
+            "🎬 Total Movies",
+            total_movies
+        )
+
+    with col2:
+
+        st.metric(
+            "⭐ Average Rating",
+            average_rating
+        )
+
+        st.metric(
+            "🏆 Most Rated Movie",
+            most_rated_movie
+        )
+
+    st.markdown("---")
+
+    st.write(
+        "Get personalized movie recommendations instantly."
     )
 
-    st.metric(
-        "🎬 Total Movies",
-        total_movies
+    # Movie Selection
+    # Search Movie
+
+    search_movie = st.text_input(
+        "🔍 Search Movie"
     )
 
-with col2:
+    # Genre Filter
 
-    st.metric(
-        "⭐ Average Rating",
-        average_rating
+    genre_list = [
+        "All",
+        "Action",
+        "Comedy",
+        "Drama",
+        "Horror",
+        "Romance",
+        "Thriller",
+        "Adventure",
+        "Animation",
+        "Sci-Fi"
+    ]
+
+    selected_genre = st.selectbox(
+        "🎭 Select Genre",
+        genre_list
     )
 
-    st.metric(
-        "🏆 Most Rated Movie",
-        most_rated_movie
-    )
+    # Filter Movies
 
-st.markdown("---")
+    filtered_movies = movies.copy()
 
-st.write(
-    "Get personalized movie recommendations instantly."
-)
+    if selected_genre != "All":
 
-# Movie Selection
-selected_movie = st.selectbox(
-    "Select Movie",
-    movies["title"].values
-)
-
-
-# Movie Details Section
-
-movie_info = movies[
-    movies['title'] == selected_movie
-].iloc[0]
-
-st.markdown("---")
-
-st.header("🎬 Movie Details")
-
-st.subheader(
-    movie_info['title']
-)
-
-st.info(
-    f"🎭 Genres: {movie_info['genres']}"
-)
-
-# Recommendation Button
-if st.button("Recommend"):
-
-    recommendations = recommend(
-        selected_movie
-    )
-
-    st.subheader(
-        "🤝 Collaborative Filtering Recommendations"
-    )
-
-    collab_movies = collaborative_recommend(
-        selected_movie
-    )
-
-    for movie in collab_movies:
-
-        st.write("🎬", movie)
-
-    st.subheader("Recommended Movies")
-
-    cols = st.columns(2)
-
-    for index, row in recommendations.iterrows():
-
-        with cols[index % 2]:
-            
-            poster = fetch_poster(
-                row['title']
+        filtered_movies = filtered_movies[
+            filtered_movies['genres']
+            .str.contains(
+                selected_genre,
+                case=False,
+                na=False
             )
+        ]
 
-            if poster:
+    if search_movie:
+
+        filtered_movies = filtered_movies[
+            filtered_movies['title']
+            .str.contains(
+                search_movie,
+                case=False,
+                na=False
+            )
+        ]
+
+    movie_list = filtered_movies['title'].values.tolist()
+
+    movie_list.insert(0, "Select a Movie")
+
+    selected_movie = st.selectbox(
+        "🎬 Select Movie",
+        movie_list
+    )
+
+    # Movie Details Section
+
+    if selected_movie != "Select a Movie":
+
+        movie_info = movies[
+            movies['title'] == selected_movie
+        ].iloc[0]
+
+        st.subheader("🎬 Movie Details")
+
+        st.write(movie_info['title'])
+
+
+    # Recommendation Button
+    if st.button("Recommend") and selected_movie != "Select a Movie":
+        recommendations = recommend(
+            selected_movie
+        )
+
+        st.subheader("Recommended Movies")
+
+        cols = st.columns(2)
+
+        for index, row in recommendations.iterrows():
+
+            with cols[index % 2]:
+                
+                if pd.notna(row['poster_path']):
+
+                    poster_url = (
+                        "https://image.tmdb.org/t/p/w500"
+                        + str(row['poster_path'])
+                    )
+
+                    st.image(
+                        poster_url,
+                        width=180
+                    )
+
+                else:
+
+                    st.write("Poster Not Available")
+
+                st.markdown(
+                        f"""
+                        ### 🎬 {row['title']}
+                        
+                        **Genres:**  
+                        {row['genres']}
+
+                        ⭐ Rating: {row['vote_average']}
+
+                        📅 Release Date: {row['release_date']}
+
+                        📝 Overview:  
+                        {row['overview'][:200]}...
+                        """
+                )
+
+                youtube_search = (
+                    "https://www.youtube.com/results?search_query="
+                    + row['title'].replace(" ", "+")
+                    + "+official+trailer"
+    )
+
+                st.link_button(
+        "▶ Watch Trailer",
+        youtube_search
+    )
+        st.markdown("---")
+        
+    if menu == "🏠 Home":
+        st.header("📞 Contact Us")
+        with st.form("contact_form_home"):
+
+                    contact_name = st.text_input("Your Name")
+
+                    contact_email = st.text_input("Your Email")
+
+                    contact_message = st.text_area("Your Message")
+
+                    submit_button = st.form_submit_button(
+                        "Send Message"
+                    )
+
+                    if submit_button:
+
+                        with open(
+                            "messages.txt",
+                            "a",
+                            encoding="utf-8"
+                        ) as file:
+
+                            file.write(
+                                f"Name: {contact_name}\n"
+                            )
+
+                            file.write(
+                                f"Email: {contact_email}\n"
+                            )
+
+                            file.write(
+                                f"Message: {contact_message}\n"
+                            )
+
+                            file.write(
+                                "-" * 50 + "\n"
+                            )
+
+                        st.success(
+                            "Message sent successfully!"
+                        )
+        st.caption(
+             "Made By Vishal Jindal"
+        )
+    st.markdown("---")
+    # Trending Movies
+if menu == "🔥 Trending":
+
+    st.header("🔥 Trending Movies")
+
+    trending_movies = movies.sample(5)
+
+    cols = st.columns(5)
+
+    for idx, (_, movie) in enumerate(trending_movies.iterrows()):
+
+        with cols[idx]:
+
+            if pd.notna(movie["poster_path"]):
+
+                poster_url = (
+                    "https://image.tmdb.org/t/p/w500"
+                    + str(movie["poster_path"])
+                )
 
                 st.image(
-                    poster,
+                    poster_url,
                     use_container_width=True
                 )
 
+                st.write(
+                    f"⭐ {movie['title']}"
+                )
+if menu == "⭐ Top Rated":
 
-            st.markdown(
-                f"""
-                ### 🎬 {row['title']}
-                
-                **Genres:**  
-                {row['genres']}
-                """
-            )
+    st.header("⭐ Top Rated Movies")
 
-            movie_name = row['title']
+    top_movies = movies.sort_values(
+        by="vote_average",
+        ascending=False
+    ).head(10)
 
-            youtube_search = (
-                "https://www.youtube.com/results?search_query="
-                + movie_name.replace(" ", "+")
-                + "+official+trailer"
-            )
+    for _, row in top_movies.iterrows():
 
-            st.link_button(
-    "▶ Watch Trailer",
-    youtube_search
-)
-st.markdown("---")
-# Trending Movies
-st.subheader("🔥 Trending Movies")
+        st.markdown(
+            f"""
+            <div style="
+                background: linear-gradient(
+                    90deg,
+                    #0f3d2e,
+                    #071a12
+                );
+                padding: 15px;
+                border-radius: 10px;
+                margin-bottom: 10px;
+                color: white;
+                font-size: 18px;
+            ">
+            🎬 {row['title']}
+            <span style="float:right;">
+            ⭐ {round(row['vote_average'],1)}
+            </span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+if menu == "ℹ️ About":
 
-popular_movies = ratings.groupby(
-    "movieId"
-)["rating"].mean().sort_values(
-    ascending=False
-).head(10)
+    st.title("ℹ️ About This Project")
 
-for movie_id in popular_movies.index:
+    st.markdown(
+        """
+        ## 🎬 AI Movie Recommendation System
 
-    movie_name = movies[
-        movies["movieId"] == movie_id
-    ]["title"].values
+        This project is a Netflix-inspired Movie Recommendation System
+        developed using Python, Machine Learning, and Streamlit.
 
-    if len(movie_name) > 0:
-        st.write("⭐", movie_name[0])
+        ### 🚀 Features
+        - Movie Recommendations
+        - Genre Filtering
+        - Search Functionality
+        - Trending Movies
+        - Top Rated Movies
+        - Real Movie Posters
+        - YouTube Trailer Support
+        - Netflix Style UI
 
-# Footer
-st.markdown("---")
+        ### 🧠 Technologies Used
+        - Python
+        - Pandas
+        - Scikit-learn
+        - Streamlit
+        - TMDB Dataset
+        - Machine Learning
 
-st.caption(
-    "Made with ❤️ using Python & Machine Learning"
-)
+        ### 🤖 Recommendation Technique
+        This system uses Content-Based Filtering to recommend
+        similar movies based on genres and movie features.
 
-# Contact Us Section
-st.markdown("---")
-
-st.header("📞 Contact Us")
-
-with st.form("contact_form"):
-
-    contact_name = st.text_input("Your Name")
-
-    contact_email = st.text_input("Your Email")
-
-    contact_message = st.text_area("Your Message")
-
-    submit_button = st.form_submit_button(
-        "Send Message"
+        ### 👨‍💻 Developed By
+        Vishal Jindal
+        """
     )
 
-    if submit_button:
-
-        with open(
-            "messages.txt",
-            "a",
-            encoding="utf-8"
-        ) as file:
-
-            file.write(
-                f"Name: {contact_name}\n"
-            )
-
-            file.write(
-                f"Email: {contact_email}\n"
-            )
-
-            file.write(
-                f"Message: {contact_message}\n"
-            )
-
-            file.write(
-                "-" * 50 + "\n"
-            )
-
-        st.success(
-            "Message sent successfully!"
-        )
-st.caption(
-    "Made By Vishal Jindal"
-)
+    st.image(
+        "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba",
+        use_container_width=True
+    )
