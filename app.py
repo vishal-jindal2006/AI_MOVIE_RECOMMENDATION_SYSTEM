@@ -79,9 +79,11 @@ st.markdown(
 @st.cache_data
 def load_movies():
 
-    return pd.read_csv(
-        "TMDB_movie_dataset_v11.csv"
-    ).head(9000)
+    file_id = "1FVzBtAVnyLrKvq3wMSfAIkAiSaiRBEWI"
+
+    url = f"https://drive.google.com/uc?id={file_id}"
+
+    return pd.read_csv(url).head(9000)
 
 movies = load_movies()
 
