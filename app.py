@@ -11,7 +11,8 @@ API_KEY = "dc039555"
 st.set_page_config(
     page_title="Netflix AI Recommender",
     page_icon="🎬",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 # Custom Netflix Dark Theme
 st.markdown(
@@ -148,7 +149,7 @@ indices = pd.Series(
 ).drop_duplicates()
 
 # Recommendation Function
-def recommend(title):
+def recommend(title, genre="All"):
    
     if title not in indices:
         return []
@@ -166,8 +167,21 @@ def recommend(title):
     sim_scores = sim_scores[1:8]
 
     movie_indices = [i[0] for i in sim_scores]
+    recommendations = movies.iloc[movie_indices]
 
-    return movies.iloc[movie_indices]
+    # Genre Filter
+    if genre != "All":
+
+        recommendations = recommendations[
+            recommendations['genres'].str.contains(
+                genre,
+                case=False,
+                na=False
+            )
+        ]
+
+    return recommendations
+
 
 
 def collaborative_recommend(movie_title):
@@ -253,7 +267,7 @@ st.sidebar.info(
 # Main Title
 if menu == "🏠 Home":
     
-    st.title("🎥 AI Movie Recommendation System")
+    st.title("📽️ AI Movie Recommendation System")
     # User Behavior Analysis Section
 
     st.markdown("---")
@@ -293,11 +307,6 @@ if menu == "🏠 Home":
     )
 
     # Movie Selection
-    # Search Movie
-
-    search_movie = st.text_input(
-        "🔍 Search Movie"
-    )
 
     # Genre Filter
 
@@ -327,22 +336,10 @@ if menu == "🏠 Home":
 
         filtered_movies = filtered_movies[
             filtered_movies['genres']
-            .str.contains(
-                selected_genre,
-                case=False,
-                na=False
-            )
-        ]
-
-    if search_movie:
-
-        filtered_movies = filtered_movies[
-            filtered_movies['title']
-            .str.contains(
-                search_movie,
-                case=False,
-                na=False
-            )
+            .fillna("")
+            .astype(str)
+            .str.lower()
+            .str.contains(selected_genre.lower())
         ]
 
     movie_list = filtered_movies['title'].values.tolist()
@@ -370,16 +367,29 @@ if menu == "🏠 Home":
     # Recommendation Button
     if st.button("Recommend") and selected_movie != "Select a Movie":
         recommendations = recommend(
-            selected_movie
+            selected_movie,
+            selected_genre
         )
 
         st.subheader("Recommended Movies")
 
-        cols = st.columns(2)
+        cols = st.columns(5)
 
-        for index, row in recommendations.iterrows():
+        # Pagination
 
-            with cols[index % 2]:
+        movies_per_page = 10
+
+        if 'page' not in st.session_state:
+            st.session_state.page = 1
+
+        start_idx = (st.session_state.page - 1) * movies_per_page
+        end_idx = start_idx + movies_per_page
+
+        paginated_recommendations = recommendations.iloc[start_idx:end_idx]
+
+        for index, row in paginated_recommendations.iterrows():
+            
+            with cols[index % 5]:
                 
                 if pd.notna(row['poster_path']):
 
@@ -424,6 +434,22 @@ if menu == "🏠 Home":
         youtube_search
     )
         st.markdown("---")
+        
+        col1, col2 = st.columns(2)
+
+        with col1:
+
+            if st.button("⬅ Previous"):
+
+                if st.session_state.page > 1:
+                    st.session_state.page -= 1
+
+        with col2:
+
+            if st.button("Next ➡"):
+
+                if end_idx < len(recommendations):
+                    st.session_state.page += 1
         
     if menu == "🏠 Home":
         st.header("📞 Contact Us")
