@@ -12,21 +12,50 @@ st.set_page_config(
     page_title="Netflix AI Recommender",
     page_icon="🎬",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 # Custom Netflix Dark Theme
 st.markdown(
     """
     <style>
     
-    header {
-    visibility: hidden;
+    header[data-testid="stHeader"] {
+        background: rgba(0,0,0,0);
+        height: 0rem;
+    }
+
+    header[data-testid="stHeader"] {
+        background: transparent;
+    }
+
+    div[data-testid="stToolbar"] {
+        right: 10px;
+    }
+    
+    button[kind="header"] svg {
+
+        width: 32px !important;
+
+        height: 32px !important;
+    }
+
+    button[kind="header"] svg {
+
+        width: 28px !important;
+
+        height: 28px !important;
+
+        color: white !important;
+    }
+
+    button[kind="header"] {
+        visibility: visible !important;
     }
     
     .block-container {
         padding-top: 1rem;
         padding-bottom: 0rem;
-        max-width: 95%;
+        max-width: 92%;
     }
 
     .stApp {
@@ -67,6 +96,14 @@ st.markdown(
         color: white;
         border-radius: 8px;
     }
+    
+    .stTextInput input,
+    .stTextArea textarea {
+
+        background-color: #1E1E1E !important;
+
+        color: white !important;
+    }
 
     p, label, span {
         color: white !important;
@@ -95,6 +132,7 @@ movies = load_movies()
 
 movies = movies[
     [
+        'id',
         'title',
         'genres',
         'overview',
@@ -103,6 +141,11 @@ movies = movies[
         'release_date'
     ]
 ]
+
+movies.rename(
+    columns={'id': 'movieId'},
+    inplace=True
+)
 
 ratings = pd.read_csv("ratings.csv").head(5000)
 # User Behavior Analysis
@@ -182,48 +225,38 @@ def recommend(title, genre="All"):
 
     return recommendations
 
-
-
 def collaborative_recommend(movie_title):
 
-    # Find movie ID
     movie_data = movies[
         movies['title'] == movie_title
     ]
 
     if movie_data.empty:
-        return []
+        return pd.DataFrame()
 
     movie_id = movie_data.iloc[0]['movieId']
 
-    # Users who watched/rated movie
+    # Users who liked this movie
     users_who_liked = ratings[
         ratings['movieId'] == movie_id
     ]['userId']
 
-    # Movies liked by similar users
-    recommended_movies = ratings[
+    # Movies liked by same users
+    recommended_movie_ids = ratings[
         ratings['userId'].isin(users_who_liked)
-    ]['movieId'].value_counts()
+    ]['movieId'].value_counts().head(20).index
 
-    # Top recommendations
-    recommended_movies = recommended_movies.head(10)
+    recommendations = movies[
+        movies['movieId'].isin(recommended_movie_ids)
+    ]
 
-    recommended_titles = []
+    # Remove selected movie
+    recommendations = recommendations[
+        recommendations['title'] != movie_title
+    ]
 
-    for movieId in recommended_movies.index:
+    return recommendations.head(10)
 
-        title_data = movies[
-            movies['movieId'] == movieId
-        ]
-
-        if not title_data.empty:
-
-            recommended_titles.append(
-                title_data.iloc[0]['title']
-            )
-
-    return recommended_titles
 def fetch_poster(movie_title):
 
     url = (
@@ -365,11 +398,27 @@ if menu == "🏠 Home":
 
 
     # Recommendation Button
+
     if st.button("Recommend") and selected_movie != "Select a Movie":
-        recommendations = recommend(
+
+        collab_recommendations = collaborative_recommend(
+            selected_movie
+        )
+
+        content_recommendations = recommend(
             selected_movie,
             selected_genre
         )
+
+        # Hybrid Recommendation System
+
+        if not collab_recommendations.empty:
+
+            recommendations = collab_recommendations
+
+        else:
+
+            recommendations = content_recommendations
 
         st.subheader("Recommended Movies")
 
@@ -387,9 +436,11 @@ if menu == "🏠 Home":
 
         paginated_recommendations = recommendations.iloc[start_idx:end_idx]
 
-        for index, row in paginated_recommendations.iterrows():
+        for idx, (_, row) in enumerate(
+            paginated_recommendations.iterrows()
+        ):
             
-            with cols[index % 5]:
+            with cols[idx % 5]:
                 
                 if pd.notna(row['poster_path']):
 
@@ -563,6 +614,13 @@ if menu == "ℹ️ About":
 
     st.markdown(
         """
+        <div style="
+            background-color:#1E1E1E;
+            padding:25px;
+            border-radius:12px;
+            color:white;
+        ">
+
         ## 🎬 AI Movie Recommendation System
 
         This project is a Netflix-inspired Movie Recommendation System
@@ -570,6 +628,8 @@ if menu == "ℹ️ About":
 
         ### 🚀 Features
         - Movie Recommendations
+        - Collaborative Filtering
+        - User Analysis Behaviour
         - Genre Filtering
         - Search Functionality
         - Trending Movies
@@ -587,15 +647,15 @@ if menu == "ℹ️ About":
         - Machine Learning
 
         ### 🤖 Recommendation Technique
-        This system uses Content-Based Filtering to recommend
-        similar movies based on genres and movie features.
+        This system uses Hybrid Recommendation Techniques including
+        Content-Based Filtering and Collaborative Filtering.
 
         ### 👨‍💻 Developed By
         Vishal Jindal
-        """
-    )
 
-    st.image(
-        "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba",
-        use_container_width=True
+        📧 jindalvishal2006@gmail.com
+
+        </div>
+        """,
+        unsafe_allow_html=True
     )
