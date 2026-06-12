@@ -151,7 +151,7 @@ movies.rename(
     inplace=True
 )
 
-ratings = pd.read_csv("ratings.csv")
+ratings = pd.read_csv("ratings.csv").head(50000)
 # User Behavior Analysis
 
 total_users = ratings['userId'].nunique()
@@ -174,9 +174,9 @@ user_movie_matrix = ratings.pivot_table(
 
 # User Similarity
 
-user_similarity = cosine_similarity(
-    user_movie_matrix
-)
+ # user_similarity = cosine_similarity(
+    # user_movie_matrix
+# )
 
 # Fill missing values
 movies["genres"] = movies["genres"].fillna("")
