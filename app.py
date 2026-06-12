@@ -129,10 +129,9 @@ def load_movies():
 
         gdown.download(url, output, quiet=True)
 
-    return pd.read_csv(output).head(10000)
+    return pd.read_csv(output).head(3000)
 
 movies = load_movies()
-st.write("Movies Loaded:", len(movies))
 
 movies = movies[
     [
@@ -151,7 +150,7 @@ movies.rename(
     inplace=True
 )
 
-ratings = pd.read_csv("ratings.csv").head(50000)
+ratings = pd.read_csv("ratings.csv").head(20000)
 # User Behavior Analysis
 
 total_users = ratings['userId'].nunique()
@@ -166,11 +165,11 @@ average_rating = round(
 most_rated_movie = "Popular TMDB Movie"
 # Collaborative Filtering Matrix
 
-user_movie_matrix = ratings.pivot_table(
-    index='userId',
-    columns='movieId',
-    values='rating'
-).fillna(0)
+# user_movie_matrix = ratings.pivot_table(
+#    index='userId',
+#    columns='movieId',
+#    values='rating'
+# ).fillna(0)
 
 # User Similarity
 
