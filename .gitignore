@@ -1,0 +1,4 @@
+*.csv
+*.pkl
+*.zip
+tmdb_temp.csv

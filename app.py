@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import gdown
 import requests
+import os
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 from sklearn.metrics.pairwise import cosine_similarity
@@ -120,11 +121,13 @@ def load_movies():
 
     file_id = "1FVzBtAVnyLrKvq3wMSfAIkAiSaiRBEWI"
 
-    url = f"https://drive.google.com/uc?id={file_id}"
-
     output = "tmdb_temp.csv"
 
-    gdown.download(url, output, quiet=False)
+    if not os.path.exists(output):
+
+        url = f"https://drive.google.com/uc?id={file_id}"
+
+        gdown.download(url, output, quiet=True)
 
     return pd.read_csv(output).head(9000)
 
