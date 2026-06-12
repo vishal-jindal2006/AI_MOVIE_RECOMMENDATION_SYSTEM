@@ -129,7 +129,7 @@ def load_movies():
 
         gdown.download(url, output, quiet=True)
 
-    return pd.read_csv(output).head(9000)
+    return pd.read_csv(output)
 
 movies = load_movies()
 
