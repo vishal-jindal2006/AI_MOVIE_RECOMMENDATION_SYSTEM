@@ -129,9 +129,10 @@ def load_movies():
 
         gdown.download(url, output, quiet=True)
 
-    return pd.read_csv(output)
+    return pd.read_csv(output).head(10000)
 
 movies = load_movies()
+st.write("Movies Loaded:", len(movies))
 
 movies = movies[
     [
@@ -150,7 +151,7 @@ movies.rename(
     inplace=True
 )
 
-ratings = pd.read_csv("ratings.csv").head(5000)
+ratings = pd.read_csv("ratings.csv")
 # User Behavior Analysis
 
 total_users = ratings['userId'].nunique()
@@ -196,9 +197,9 @@ indices = pd.Series(
 
 # Recommendation Function
 def recommend(title, genre="All"):
-   
+
     if title not in indices:
-        return []
+        return pd.DataFrame()
 
     idx = indices[title]
 
@@ -212,10 +213,14 @@ def recommend(title, genre="All"):
 
     sim_scores = sim_scores[1:8]
 
-    movie_indices = [i[0] for i in sim_scores]
+    movie_indices = [
+        i[0]
+        for i in sim_scores
+        if i[0] < len(movies)
+    ]
+
     recommendations = movies.iloc[movie_indices]
 
-    # Genre Filter
     if genre != "All":
 
         recommendations = recommendations[
